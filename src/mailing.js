@@ -1,34 +1,37 @@
 const fs = require("fs");
 const { google } = require("googleapis");
-const { subscribers, host, PROVIDER_TOKEN } = JSON.parse(fs.readFileSync("./config/config.json"));
-const path = require("path");
-const configPath = path.resolve("config/config.json");
+const config = JSON.parse(fs.readFileSync("./config/config.json"));
+const { subscribers, host } = config;
 const labelModifier = require("./modify");
-const getAttachmentData = require("./attachments").getAttachmentData;
+const attchProvider = require("./attachments");
 const messageProvider = require("./message.js");
-const hasToken = require("./authorize").hasToken;
 
 module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(auth) {
-  global.logger.info("Check unread messages");
+  global.logger.info("Checking unread messages");
   const gmail = google.gmail({ version: "v1", auth });
   messageProvider.getUnreadMessages(gmail).then(response => {
     const { data } = response;
     if (data.messages) {
       data.messages.forEach(async msg => {
-        let currentMsg = await messageProvider.getMessageData(gmail, msg);
+        const currentMsg = await messageProvider.getMessageData(gmail, msg);
         const isProvider = await messageProvider.isProvider(gmail, msg);
-        global.logger.info(`Is author's msg provider ? He is ${isProvider ? "yes" : "no"}`);
-        if (currentMsg.data && hasToken(currentMsg, PROVIDER_TOKEN) && !isProvider) {
-          global.logger.info("Overwriting existing config");
-          const content = JSON.parse(fs.readFileSync(configPath));
-          content.providers.push(await messageProvider.getMessageAuthor(gmail, msg));
-          fs.writeFileSync(configPath, JSON.stringify(content));
-        }
+        global.logger.info(`Is author a msg provider ? ${isProvider ? "Yes" : "No"}`);
         if (currentMsg.data && isProvider) {
           global.logger.info("Starting messaging subscribers...");
-          subscribers.forEach(sub => {
-            sendMessage(gmail, sub, currentMsg);
-          });
+          if (!process.env.DEBUG) {
+            subscribers.forEach(async sub => {
+              const { data } = currentMsg;
+              const preparedMsg = await prepareMessage(gmail, data, sub, host);
+              messageProvider.sendMessage(gmail, sub, preparedMsg.join("\n"), data, host);
+            });
+          } else {
+            const { data } = currentMsg;
+            const user = { firstName: "Иван", lastName: "Садыков", email: "grandpajok@gmail.com" };
+            const preparedMsg = await prepareMessage(gmail, data, user, host);
+            messageProvider.sendMessage(gmail, user, preparedMsg.join("\n"), data, host);
+          }
+        } else {
+          labelModifier.removeLabels(gmail, currentMsg.data, ["UNREAD"]);
         }
       });
     } else {
@@ -37,84 +40,135 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
   });
 };
 
-async function sendMessage(gmail, user, msg) {
-  const { data } = msg;
-  const message = await prepareMessage(gmail, data, user, host);
-  // The body needs to be base64url encoded.
-  const encodedMessage = Buffer.from(message)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+function prepareMessage(gmail, data, user, host) {
+  return new Promise(resolve => {
+    const metadataHeaders = data.payload.headers;
+    metadataHeaders[metadataHeaders.findIndex(header => header.name === "To")] = {
+      name: "To",
+      value: `${user.firstName} ${user.lastName} <${user.email}>`
+    };
 
-  await gmail.users.messages
-    .send({
-      userId: "me",
-      requestBody: {
-        raw: encodedMessage
-      },
-      threadId: data.threadId
+    metadataHeaders[metadataHeaders.findIndex(header => header.name === "From")] = {
+      name: "From",
+      value: `<${host.email}>`
+    };
+
+    const headers = [];
+    const to = metadataHeaders.find(header => header.name === "To");
+    const from = metadataHeaders.find(header => header.name === "From");
+    const mime = metadataHeaders.find(header => header.name === "MIME-Version");
+    const messageId = metadataHeaders.find(header => header.name === "Message-ID");
+    const subject = metadataHeaders.find(header => header.name === "Subject");
+    const contentType = metadataHeaders.find(header => header.name === "Content-Type");
+    const references = metadataHeaders.find(header => header.name === "References");
+    headers.push(`${to.name}: ${to.value}`);
+    headers.push(`${from.name}: ${from.value}`);
+    headers.push(`${mime.name}: ${mime.value}`);
+    headers.push(`${messageId.name}: ${messageId.value}`);
+    headers.push(`${subject.name}: ${subject.value}`);
+    if (references) {
+      headers.push(`${references.name}: ${references.value}`);
+    }
+    headers.push(`${contentType.name}: ${contentType.value}`);
+
+    const messageParts = headers;
+
+    const boundary = data.payload.headers
+      .find(header => header.name === "Content-Type")
+      .value.split(";")[1]
+      .trim()
+      .split("boundary=")[1]
+      .replace(/["]/g, "");
+    let messages = [];
+    messageParts.push(`--${boundary}`);
+    messageParts.push(`"Content-Type: text/plain; charset="UTF-8""`);
+    messageParts.push(`Content-Transfer-Encoding: base64`);
+    messageParts.push("This is autogenerated message. Do not respond!");
+    messageParts.push("");
+    messageParts.push(`--${boundary}`);
+    for (const attachment of data.payload.parts) {
+      const mimes = attachment.headers;
+      if (!attachment.mimeType.includes("text")) {
+        let once = 0;
+        mimes.forEach(mime => {
+          if (attachment.mimeType.includes("multipart")) {
+            messageParts.push(`${mime.name}: ${mime.value}`);
+            getSchema(gmail, messageParts, attachment, data.id);
+          } else {
+            if (once === 0 && attachment.body.attachmentId) {
+              messageParts.push(`--${boundary}`);
+              once++;
+            }
+            messageParts.push(`${mime.name}: ${mime.value}`);
+          }
+        });
+        if (attachment.body.attachmentId) {
+          attchProvider.appendMediaAttachment(gmail, messageParts, attachment, data.id);
+        }
+      } else {
+        messages.push(attachment);
+      }
+    }
+    setTimeout(() => {
+      resolve({
+        messages,
+        messageParts,
+        boundary
+      });
+    }, 3000);
+  })
+    .then(resolved => {
+      resolved.messages.forEach(message => {
+        attchProvider.appendTextAttachment(resolved.messageParts, resolved.boundary, message);
+      });
+      resolved.messageParts.push("");
+      resolved.messageParts.push(`--${resolved.boundary}--`);
+      return resolved.messageParts;
     })
-    .then(currentMsg => {
-      global.logger.info(`Send message ${currentMsg.data.id} to ${user.email} from ${host.email}`);
-      labelModifier.removeLabels(gmail, msg.data, ["UNREAD"]);
-    })
-    .catch(err => {
-      global.logger.info("Didn't send message");
-      console.error(err);
+    .then(messageParts => {
+      return messageParts;
     });
 }
 
-async function prepareMessage(gmail, data, user, host) {
-  const metadataHeaders = data.payload.headers;
-  metadataHeaders[metadataHeaders.findIndex(header => header.name === "To")] = {
-    name: "To",
-    value: `${user.firstName} ${user.lastName} <${user.email}>`
-  };
-
-  metadataHeaders[metadataHeaders.findIndex(header => header.name === "From")] = {
-    name: "From",
-    value: `<${host.email}>`
-  };
-
-  const messageParts = metadataHeaders.map(header => {
-    return `${header.name}: ${header.value}`;
-  });
-
-  const boundary = data.payload.headers
+function getSchema(gmail, messageParts, attachments, messageId) {
+  const mimes = attachments.headers;
+  const boundary = attachments.headers
     .find(header => header.name === "Content-Type")
     .value.split(";")[1]
     .trim()
     .split("boundary=")[1]
     .replace(/["]/g, "");
   let messages = [];
-  for (const attachment of data.payload.parts) {
-    const mimes = attachment.headers;
-    messageParts.push(`--${boundary}`);
-    mimes.forEach(mime => messageParts.push(`${mime.name}: ${mime.value}`));
-    if (attachment.mimeType.includes("plain")) {
-      messages.push(Buffer.from(attachment.body.data, "base64").toString());
+  attachments.parts.forEach(attachment => {
+    if (!attachment.mimeType.includes("text")) {
+      let once = 0;
+      mimes.forEach(mime => {
+        if (attachment.mimeType.includes("multipart")) {
+          messageParts.push(`${mime.name}: ${mime.value}`);
+          getSchema(gmail, messageParts, attachment, messageId);
+        } else {
+          if (once === 0 && attachment.body.attachmentId) {
+            messageParts.push(`--${boundary}`);
+            once++;
+          }
+          messageParts.push(`${mime.name}: ${mime.value}`);
+        }
+      });
+      if (attachment.body.attachmentId) {
+        attchProvider.appendMediaAttachment(gmail, messageParts, attachment, messageId);
+      }
+    } else {
+      messages.push(attachment);
     }
-    if (attachment.body.attachmentId) {
-      const response = await getAttachmentData(gmail, data.id, attachment.body.attachmentId);
-      const tempFile = __dirname + "/temp";
-      fs.writeFileSync(tempFile, Buffer.from(response.data.data, "base64"));
-      messageParts.push(fs.readFileSync(tempFile, { encoding: "base64" }));
-      fs.unlinkSync(tempFile);
-    }
+  });
+  messages.forEach(message => {
     messageParts.push("");
-  }
-  if (messages) {
-    messages = messages.join("\n");
-  }
-  messageParts.push(`--${boundary}`);
-  messageParts.push("Content-Type: text/plain; charset='UTF-8'");
-  messageParts.push("Content-Transfer-Encoding: base64");
-  messageParts.push("This message has been autogenerated. Do not reply");
+    messageParts.push(`--${boundary}`);
+    attchProvider.appendTextAttachment(messageParts, message);
+  });
+  messageParts.push("");
   messageParts.push(`--${boundary}--`);
-
-  const msg = messageParts.join("\n");
-  return msg;
+  messageParts.push("");
 }
 
-module.exports.sendMessage = sendMessage;
+module.exports.getSchema = getSchema;

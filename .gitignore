@@ -9,3 +9,12 @@ node_modules
 credentials.*
 token.*
 config.*
+backups
+
+#logs
+logs
+*.log
+
+#bash
+
+*.stackdump

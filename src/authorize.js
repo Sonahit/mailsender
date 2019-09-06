@@ -61,6 +61,6 @@ function getNewToken(oAuth2Client, callback) {
   });
 }
 
-module.exports.hasToken = async function hasToken(msg, token) {
+module.exports.hasToken = function hasToken(msg, token) {
   return msg.data.snippet.includes(token);
 };
