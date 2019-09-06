@@ -18,7 +18,7 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
         global.logger.info(`Is author a msg provider ? ${isProvider ? "Yes" : "No"}`);
         if (currentMsg.data && isProvider) {
           global.logger.info("Starting messaging subscribers...");
-          if (!process.env.DEBUG) {
+          if (!process.env.DEBUG_LOGGER) {
             subscribers.forEach(async sub => {
               const { data } = currentMsg;
               const preparedMsg = await prepareMessage(gmail, data, sub, host);
@@ -119,7 +119,9 @@ function prepareMessage(gmail, data, user, host) {
   })
     .then(resolved => {
       resolved.messages.forEach(message => {
-        attchProvider.appendTextAttachment(resolved.messageParts, resolved.boundary, message);
+        resolved.messageParts.push("");
+        resolved.messageParts.push(`--${resolved.boundary}`);
+        attchProvider.appendTextAttachment(resolved.messageParts, message);
       });
       resolved.messageParts.push("");
       resolved.messageParts.push(`--${resolved.boundary}--`);
