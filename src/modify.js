@@ -14,6 +14,6 @@ module.exports.removeLabels = function removeLabels(gmail, msgData, labels) {
     })
     .catch(err => {
       global.logger.info("Couldn't modify message");
-      console.error(err);
+      global.logger.error(err);
     });
 };

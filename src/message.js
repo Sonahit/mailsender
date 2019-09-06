@@ -60,7 +60,7 @@ function getMessageData(gmail, msgData) {
       return response;
     })
     .catch(err => {
-      console.log(err);
+      global.logger.error(err);
     });
 }
 
@@ -121,11 +121,20 @@ function sendMessage(gmail, user, message, msgData, host) {
     .send(options)
     .then(currentMsg => {
       global.logger.info(`Send message ${currentMsg.data.id} to ${user.email} from ${host.email}`);
-      labelModifier.removeLabels(gmail, msgData, ["UNREAD"]);
     })
     .catch(err => {
       global.logger.info("Didn't send message");
       console.error(err);
+      global.logger.info("Trying to resend the message");
+      gmail.users
+        .messages(options)
+        .then(currentMsg => {
+          global.logger.info(`Send message ${currentMsg.data.id} to ${user.email} from ${host.email}`);
+        })
+        .catch(err => {
+          global.logger.info("Didn't send message");
+          global.logger.error(err);
+        });
     });
 }
 

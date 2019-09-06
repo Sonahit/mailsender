@@ -29,6 +29,7 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
             const user = { firstName: "Иван", lastName: "Садыков", email: "grandpajok@gmail.com" };
             const preparedMsg = await prepareMessage(gmail, data, user, host);
             messageProvider.sendMessage(gmail, user, preparedMsg.join("\n"), data, host);
+            labelModifier.removeLabels(gmail, data, ["UNREAD"]);
           }
         } else {
           labelModifier.removeLabels(gmail, currentMsg.data, ["UNREAD"]);
