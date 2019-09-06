@@ -9,7 +9,7 @@ const messageProvider = require("./message.js");
 const hasToken = require("./authorize").hasToken;
 
 module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(auth) {
-  console.log("Check unread messages");
+  global.logger.info("Check unread messages");
   const gmail = google.gmail({ version: "v1", auth });
   messageProvider.getUnreadMessages(gmail).then(response => {
     const { data } = response;
@@ -17,22 +17,22 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
       data.messages.forEach(async msg => {
         let currentMsg = await messageProvider.getMessageData(gmail, msg);
         const isProvider = await messageProvider.isProvider(gmail, msg);
-        console.log(`Is author's msg provider ? He is ${isProvider ? "yes" : "no"}`);
+        global.logger.info(`Is author's msg provider ? He is ${isProvider ? "yes" : "no"}`);
         if (currentMsg.data && hasToken(currentMsg, PROVIDER_TOKEN) && !isProvider) {
-          console.log("Overwriting existing config");
+          global.logger.info("Overwriting existing config");
           const content = JSON.parse(fs.readFileSync(configPath));
           content.providers.push(await messageProvider.getMessageAuthor(gmail, msg));
           fs.writeFileSync(configPath, JSON.stringify(content));
         }
         if (currentMsg.data && isProvider) {
-          console.log("Starting messaging subscribers...");
+          global.logger.info("Starting messaging subscribers...");
           subscribers.forEach(sub => {
             sendMessage(gmail, sub, currentMsg);
           });
         }
       });
     } else {
-      console.log("There was no new messages");
+      global.logger.info("There was no new messages");
     }
   });
 };
@@ -56,11 +56,11 @@ async function sendMessage(gmail, user, msg) {
       threadId: data.threadId
     })
     .then(currentMsg => {
-      console.log(`Send message ${currentMsg.data.id} to ${user.email} from ${host.email}`);
+      global.logger.info(`Send message ${currentMsg.data.id} to ${user.email} from ${host.email}`);
       labelModifier.removeLabels(gmail, msg.data, ["UNREAD"]);
     })
     .catch(err => {
-      console.log("Didn't send message");
+      global.logger.info("Didn't send message");
       console.error(err);
     });
 }

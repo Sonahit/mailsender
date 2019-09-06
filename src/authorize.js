@@ -24,7 +24,7 @@ module.exports = function authorize(credentials, callback) {
   fs.readFile(TOKEN_PATH, (err, token) => {
     if (err) return getNewToken(oAuth2Client, callback);
     oAuth2Client.setCredentials(JSON.parse(token));
-    console.log("Ready!");
+    global.logger.info("Ready!");
     callback(oAuth2Client);
   });
 };
@@ -40,7 +40,7 @@ function getNewToken(oAuth2Client, callback) {
     access_type: "offline",
     scope: SCOPES
   });
-  console.log("Authorize this app by visiting this url:", authUrl);
+  global.logger.info("Authorize this app by visiting this url:", authUrl);
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -53,9 +53,9 @@ function getNewToken(oAuth2Client, callback) {
       // Store the token to disk for later program executions
       fs.writeFile(TOKEN_PATH, JSON.stringify(token), err => {
         if (err) return console.error(err);
-        console.log("Token stored to", TOKEN_PATH);
+        global.logger.info("Token stored to", TOKEN_PATH);
       });
-      console.log("Ready!");
+      global.logger.info("Ready!");
       callback(oAuth2Client);
     });
   });

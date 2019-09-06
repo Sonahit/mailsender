@@ -9,11 +9,11 @@ module.exports.removeLabels = function removeLabels(gmail, msgData, labels) {
       }
     })
     .then(msg => {
-      console.log(`Modified message ${msg.data.id}`);
+      global.logger.info(`Modified message ${msg.data.id}`);
       return msg;
     })
     .catch(err => {
-      console.log("Couldn't modify message");
+      global.logger.info("Couldn't modify message");
       console.error(err);
     });
 };

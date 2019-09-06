@@ -6,15 +6,15 @@ const Logger = require("./src/logger");
 const logger = new Logger();
 global.logger = logger;
 
-console.log("Started mailing...");
+logger.info("Started mailing...");
 auth(credentials, mailing.mailMessagesToSubscribers);
 
 setInterval(() => {
   auth(credentials, mailing.mailMessagesToSubscribers);
-}, 10 * 1000 * 60);
+}, 1 * 1000 * 60);
 
 setInterval(() => {
-  console.log("Cleared stack trace");
+  logger.info("Cleared stack trace");
   const date = new Date();
   fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay + date.getMonth()}.log`, logger.stack);
   logger.stack = [];
@@ -22,13 +22,13 @@ setInterval(() => {
 
 process.on("uncaughtException", error => {
   const date = new Date();
-  console.log(error);
+  logger.info(error);
   fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay() + date.getMonth()}.log`, error);
   fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay() + date.getMonth()}.log`, logger.stack);
 });
 
 process.on("beforeExit", code => {
   const date = new Date();
-  console.log(`Exited with ${code}`);
+  logger.info(`Exited with ${code}`);
   fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay() + date.getMonth()}.log`, logger.stack);
 });
