@@ -11,6 +11,7 @@ module.exports = class Logger {
       Date: Date.now()
     });
     this.stack.push(json);
+    return message;
   }
 
   error(message) {
@@ -20,5 +21,6 @@ module.exports = class Logger {
       Date: Date.now()
     });
     this.stack.push(json);
+    return message;
   }
 };
