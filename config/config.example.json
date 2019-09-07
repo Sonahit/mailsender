@@ -1,0 +1,7 @@
+{
+  "subscribers": [{ "email": "<name>@<mail>", "firstName": "<name>", "lastName": "<lastname>" }],
+  "host": { "email": "<name>@<mail>" },
+  "providers": [{ "email": "<name>@<mail>", "firstName": "<name>", "lastName": "<lastname>" }],
+  "PROVIDER_TOKEN": "xxxx-xxxx-xxxx-xxxx",
+  "SUBSCRIBER_TOKEN": "xxxx-xxxx-xxxx-xxxx"
+}

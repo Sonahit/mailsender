@@ -8,7 +8,7 @@ node_modules
 #sensitive-data
 credentials.*
 token.*
-config.*
+config.json
 backups
 
 #logs
