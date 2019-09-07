@@ -25,14 +25,14 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
               if (!process.env.DEBUG_LOGGER) {
                 subscribers.forEach(async sub => {
                   const { data } = currentMsg;
-                  const preparedMsg = await prepareMessage(gmail, data, sub, host);
-                  messageProvider.sendMessage(gmail, sub, preparedMsg.join("\n"), data, host);
+                  const copiedMsg = await copyMessage(gmail, data, sub, host);
+                  messageProvider.sendMessage(gmail, sub, copiedMsg.join("\n"), data, host);
                 });
               } else {
                 const { data } = currentMsg;
                 const user = { firstName: "Иван", lastName: "Садыков", email: "grandpajok@gmail.com" };
-                const preparedMsg = await prepareMessage(gmail, data, user, host);
-                messageProvider.sendMessage(gmail, user, preparedMsg.join("\n"), data, host);
+                const copiedMsg = await copyMessage(gmail, data, user, host);
+                messageProvider.sendMessage(gmail, user, copiedMsg.join("\n"), data, host);
                 labelModifier.removeLabels(gmail, data, ["UNREAD"]);
               }
             } else {
@@ -52,7 +52,7 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
   });
 };
 
-function prepareMessage(gmail, data, user, host) {
+function copyMessage(gmail, data, user, host) {
   return new Promise(resolve => {
     const metadataHeaders = data.payload.headers;
     metadataHeaders[metadataHeaders.findIndex(header => header.name === "To")] = {
