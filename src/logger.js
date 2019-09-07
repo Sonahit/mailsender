@@ -3,7 +3,7 @@ module.exports = class Logger {
     this.stack = [];
   }
 
-  info(message) {
+  info(...message) {
     console.log(`info: ${message}`);
     const json = JSON.stringify({
       Message: message,
@@ -14,7 +14,7 @@ module.exports = class Logger {
     return message;
   }
 
-  error(message) {
+  error(...message) {
     console.error(`info: ${message}`);
     const json = JSON.stringify({
       Message: message,
@@ -22,5 +22,9 @@ module.exports = class Logger {
     });
     this.stack.push(json);
     return message;
+  }
+
+  toStackTrace(stack) {
+    this.stack.push(stack);
   }
 };

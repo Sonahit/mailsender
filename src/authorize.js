@@ -3,12 +3,14 @@ const { google } = require("googleapis");
 const readline = require("readline");
 const TOKEN_PATH = "token.json";
 
-const SCOPES = [
+/*const SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/gmail.send",
   "https://www.googleapis.com/auth/gmail.labels",
-  "https://www.googleapis.com/auth/gmail.modify"
-];
+  "https://www.googleapis.com/auth/gmail.modify",
+];*/
+
+const SCOPES = ["https://mail.google.com/"];
 
 /**
  * Create an OAuth2 client with the given credentials, and then execute the
@@ -24,7 +26,7 @@ module.exports = function authorize(credentials) {
 
   return new Promise((resolve, reject) => {
     fs.readFile(TOKEN_PATH, (err, token) => {
-      if (err) reject(getNewToken(oAuth2Client));
+      if (err) return reject(getNewToken(oAuth2Client));
       oAuth2Client.setCredentials(JSON.parse(token));
       global.logger.info("Ready!");
       resolve(oAuth2Client);

@@ -117,37 +117,51 @@ module.exports.checkForTokens = function checkForTokens(auth) {
   });
 };
 
-function sendMessage(gmail, user, message, msgData, host) {
-  const encodedMessage = Buffer.from(message)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-  const options = {
-    userId: "me",
-    requestBody: {
-      raw: encodedMessage
-    },
-    threadId: msgData.threadId
+async function sendMessage(message, token) {
+  const preparedMessage = message.headers.concat(message.body).join("\n");
+  const headers = {
+    Host: "www.googleapis.com",
+    Authorization: `Bearer ${token}`,
+    "X-Upload-Content-Type": "message/rfc822"
   };
-  gmail.users.messages
-    .send(options)
-    .then(currentMsg => {
-      global.logger.info(`Send message ${currentMsg.data.id} to ${user.email} from ${host.email}`);
+  const axios = require("axios");
+  axios
+    .request("https://googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=resumable", {
+      method: "POST",
+      headers: {
+        ...headers
+      }
     })
-    .catch(err => {
-      global.logger.info("Didn't send message");
-      console.error(err);
-      global.logger.info("Trying to resend the message");
-      gmail.users
-        .messages(options)
-        .then(currentMsg => {
-          global.logger.info(`Send message ${currentMsg.data.id} to ${user.email} from ${host.email}`);
+    .then(res => {
+      return res.headers.location;
+    })
+    .then(location => {
+      global.logger.info("Starting uploading message data...");
+      axios
+        .request(location, {
+          method: "PUT",
+          headers: {
+            "Content-Length": `${Buffer.byteLength(preparedMessage)}`,
+            "Content-Type": "message/rfc822"
+          },
+          data: preparedMessage,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity
+        })
+        .then(res => {
+          global.logger.info("Done uploading");
+          return res;
         })
         .catch(err => {
-          global.logger.info("Didn't send message");
-          global.logger.error(err);
+          global.logger.info("Couldn't message");
+          global.logger.toStackTrace(err.response);
+          return err;
         });
+    })
+    .catch(err => {
+      global.logger.info("Couldn't start messaging");
+      global.logger.toStackTrace(err.response);
+      return err;
     });
 }
 
