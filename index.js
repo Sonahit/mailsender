@@ -8,7 +8,7 @@ interactions.backupData(5 * 60 * 1000);
 
 process.on("uncaughtException", error => {
   const date = new Date();
-  global.logger.info(error);
+  global.logger.error(error);
   fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay() + date.getMonth()}.log`, error);
   fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay() + date.getMonth()}.log`, global.logger.stack);
 });
