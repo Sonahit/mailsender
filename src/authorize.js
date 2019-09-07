@@ -16,16 +16,21 @@ const SCOPES = [
  * @param {Object} credentials The authorization client credentials.
  * @param {function} callback The callback to call with the authorized client.
  */
-module.exports = function authorize(credentials, callback) {
+module.exports = function authorize(credentials) {
   const { client_secret, client_id, redirect_uris } = credentials.installed;
   const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
 
   // Check if we have previously stored a token.
-  fs.readFile(TOKEN_PATH, (err, token) => {
-    if (err) return getNewToken(oAuth2Client, callback);
-    oAuth2Client.setCredentials(JSON.parse(token));
-    global.logger.info("Ready!");
-    callback(oAuth2Client);
+
+  return new Promise((resolve, reject) => {
+    fs.readFile(TOKEN_PATH, (err, token) => {
+      if (err) reject(getNewToken(oAuth2Client));
+      oAuth2Client.setCredentials(JSON.parse(token));
+      global.logger.info("Ready!");
+      resolve(oAuth2Client);
+    });
+  }).catch(reject => {
+    return reject;
   });
 };
 
@@ -33,9 +38,8 @@ module.exports = function authorize(credentials, callback) {
  * Get and store new token after prompting for user authorization, and then
  * execute the given callback with the authorized OAuth2 client.
  * @param {google.auth.OAuth2} oAuth2Client The OAuth2 client to get token for.
- * @param {getEventsCallback} callback The callback for the authorized client.
  */
-function getNewToken(oAuth2Client, callback) {
+function getNewToken(oAuth2Client) {
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: "offline",
     scope: SCOPES
@@ -45,18 +49,20 @@ function getNewToken(oAuth2Client, callback) {
     input: process.stdin,
     output: process.stdout
   });
-  rl.question("Enter the code from that page here: ", code => {
-    rl.close();
-    oAuth2Client.getToken(code, (err, token) => {
-      if (err) return console.error("Error retrieving access token", err);
-      oAuth2Client.setCredentials(token);
-      // Store the token to disk for later program executions
-      fs.writeFile(TOKEN_PATH, JSON.stringify(token), err => {
-        if (err) return console.error(err);
-        global.logger.info("Token stored to", TOKEN_PATH);
+  return new Promise(resolve => {
+    rl.question("Enter the code from that page here: ", code => {
+      rl.close();
+      oAuth2Client.getToken(code, (err, token) => {
+        if (err) return console.error("Error retrieving access token", err);
+        oAuth2Client.setCredentials(token);
+        // Store the token to disk for later program executions
+        fs.writeFile(TOKEN_PATH, JSON.stringify(token), err => {
+          if (err) return console.error(err);
+          global.logger.info("Token stored to", TOKEN_PATH);
+        });
+        global.logger.info("Ready!");
+        resolve(oAuth2Client);
       });
-      global.logger.info("Ready!");
-      callback(oAuth2Client);
     });
   });
 }

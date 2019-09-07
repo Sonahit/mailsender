@@ -64,43 +64,56 @@ function getMessageData(gmail, msgData) {
     });
 }
 
-module.exports.checkForTokens = async function checkForTokens(auth) {
-  const gmail = google.gmail({ version: "v1", auth });
-  global.logger.info("Checking for tokens");
-  messageProvider.getUnreadMessages(gmail).then(response => {
-    const { data } = response;
-    if (data.messages) {
-      data.messages.forEach(async msg => {
-        const currentMsg = await messageProvider.getMessageData(gmail, msg);
-        const isProvider = await messageProvider.isProvider(gmail, msg);
-        const isSubscriber = await messageProvider.isSubscriber(gmail, msg);
-        if (hasToken(currentMsg, PROVIDER_TOKEN) && !isProvider) {
-          const author = await messageProvider.getMessageAuthor(gmail, msg);
-          if (!config.providers.some(provs => provs.email === author.email)) {
-            config.providers.push(author);
-            fs.writeFile(configPath, JSON.stringify(config, null, 4), err => {
-              global.logger.info(`Overwriting existing config.providers with author's message \n ${currentMsg.data.snippet}`);
-              if (err) {
-                return global.logger.info(err);
+module.exports.checkForTokens = function checkForTokens(auth) {
+  return new Promise(resolve => {
+    const gmail = google.gmail({ version: "v1", auth });
+    global.logger.info("Searching for tokens");
+    messageProvider
+      .getUnreadMessages(gmail)
+      .then(response => {
+        const { data } = response;
+        if (data.messages) {
+          data.messages.forEach(async msg => {
+            const currentMsg = await messageProvider.getMessageData(gmail, msg);
+            const isProvider = await messageProvider.isProvider(gmail, msg);
+            const isSubscriber = await messageProvider.isSubscriber(gmail, msg);
+            const author = await messageProvider.getMessageAuthor(gmail, msg);
+            if (hasToken(currentMsg, PROVIDER_TOKEN) && !isProvider) {
+              if (!config.providers.some(provs => provs.email === author.email)) {
+                config.providers.push(author);
+                fs.writeFile(configPath, JSON.stringify(config, null, 4), err => {
+                  global.logger.info(`Overwriting existing config.providers with author's message \n ${currentMsg.data.snippet}`);
+                  if (err) {
+                    return global.logger.info(err);
+                  }
+                  labelModifier.removeLabels(gmail, currentMsg.data, ["UNREAD"]);
+                });
               }
-              labelModifier.removeLabels(gmail, currentMsg.data, ["UNREAD"]);
-            });
-          }
-        } else if (hasToken(currentMsg, SUBSCRIBER_TOKEN) && !isSubscriber) {
-          const author = await messageProvider.getMessageAuthor(gmail, msg);
-          if (!config.subscribers.some(subs => subs.email === author.email)) {
-            config.subscribers.push(author);
-            fs.writeFile(configPath, JSON.stringify(config, null, 4), err => {
-              global.logger.info(`Overwriting existing config.subscribers with author's message \n ${currentMsg.data.snippet}`);
-              if (err) {
-                return global.logger.info(err);
+            } else if (hasToken(currentMsg, SUBSCRIBER_TOKEN) && !isSubscriber) {
+              if (!config.subscribers.some(subs => subs.email === author.email)) {
+                config.subscribers.push(author);
+                fs.writeFile(configPath, JSON.stringify(config, null, 4), err => {
+                  global.logger.info(`Overwriting existing config.subscribers with author's message \n ${currentMsg.data.snippet}`);
+                  if (err) {
+                    return global.logger.info(err);
+                  }
+                  labelModifier.removeLabels(gmail, currentMsg.data, ["UNREAD"]);
+                });
               }
-              labelModifier.removeLabels(gmail, currentMsg.data, ["UNREAD"]);
-            });
-          }
+            } else {
+              global.logger.info(`Couldn't find any tokens`);
+            }
+          });
+        } else {
+          global.logger.info(`There was no new messages.`);
         }
+      })
+      .then(() => {
+        resolve();
       });
-    }
+  }).then(() => {
+    const message = `Done searching for tokens`;
+    return message;
   });
 };
 
