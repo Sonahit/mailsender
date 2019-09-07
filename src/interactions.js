@@ -7,16 +7,14 @@ const message = require("./message");
 const logger = new Logger();
 global.logger = logger;
 
-if (process.env.DEBUG_LOGGER) {
-  auth(credentials).then(client => {
-    message.checkForTokens(client).then(response => {
+auth(credentials).then(client => {
+  message.checkForTokens(client).then(response => {
+    global.logger.info(response);
+    mailing.mailMessagesToSubscribers(client).then(response => {
       global.logger.info(response);
-      mailing.mailMessagesToSubscribers(client).then(response => {
-        global.logger.info(response);
-      });
     });
   });
-}
+});
 
 module.exports.messageSubs = function messageSubs(interval) {
   setInterval(() => {

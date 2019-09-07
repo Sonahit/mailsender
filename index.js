@@ -4,7 +4,7 @@ const interactions = require("./src/interactions");
 global.logger.info("Started mailing...");
 interactions.messageSubs(10 * 1000 * 60);
 interactions.clearStackTrace(30 * 1000 * 60);
-interactions.backupData(1 * 60 * 1000);
+interactions.backupData(5 * 60 * 1000);
 
 process.on("uncaughtException", error => {
   const date = new Date();

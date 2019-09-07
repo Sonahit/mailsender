@@ -2,7 +2,7 @@ const fs = require("fs");
 const { google } = require("googleapis");
 const path = require("path");
 const config = JSON.parse(fs.readFileSync("./config/config.json"));
-const { providers, subscribers, PROVIDER_TOKEN, SUBSCRIBER_TOKEN } = config;
+const { providers, subscribers, PROVIDER_TOKEN, SUBSCRIBER_TOKEN, UNSUBSCRIBE_TOKEN, NONPROVIDING_TOKEN } = config;
 const configPath = path.resolve("config/config.json");
 const hasToken = require("./authorize").hasToken;
 const labelModifier = require("./modify");
@@ -65,58 +65,70 @@ function getMessageData(gmail, msgData) {
 }
 
 module.exports.checkForTokens = function checkForTokens(auth) {
+  const gmail = google.gmail({ version: "v1", auth });
   return new Promise(resolve => {
-    const gmail = google.gmail({ version: "v1", auth });
     global.logger.info("Searching for tokens");
-    messageProvider
-      .getUnreadMessages(gmail)
-      .then(response => {
-        const { data } = response;
-        if (data.messages) {
-          data.messages.forEach(async msg => {
-            const currentMsg = await messageProvider.getMessageData(gmail, msg);
-            const isProvider = await messageProvider.isProvider(gmail, msg);
-            const isSubscriber = await messageProvider.isSubscriber(gmail, msg);
-            const author = await messageProvider.getMessageAuthor(gmail, msg);
-            if (hasToken(currentMsg, PROVIDER_TOKEN) && !isProvider) {
-              if (!config.providers.some(provs => provs.email === author.email)) {
-                config.providers.push(author);
-                fs.writeFile(configPath, JSON.stringify(config, null, 4), err => {
-                  global.logger.info(`Overwriting existing config.providers with author's message \n ${currentMsg.data.snippet}`);
-                  if (err) {
-                    return global.logger.info(err);
-                  }
-                  labelModifier.removeLabels(gmail, currentMsg.data, ["UNREAD"]);
-                });
-              }
-            } else if (hasToken(currentMsg, SUBSCRIBER_TOKEN) && !isSubscriber) {
-              if (!config.subscribers.some(subs => subs.email === author.email)) {
-                config.subscribers.push(author);
-                fs.writeFile(configPath, JSON.stringify(config, null, 4), err => {
-                  global.logger.info(`Overwriting existing config.subscribers with author's message \n ${currentMsg.data.snippet}`);
-                  if (err) {
-                    return global.logger.info(err);
-                  }
-                  labelModifier.removeLabels(gmail, currentMsg.data, ["UNREAD"]);
-                });
-              }
-            } else {
-              global.logger.info(`Couldn't find any tokens`);
-            }
-          });
-        } else {
-          global.logger.info(`There was no new messages.`);
+    messageProvider.getUnreadMessages(gmail).then(response => {
+      const { data } = response;
+      if (data.messages) {
+        resolve(data);
+      } else {
+        global.logger.info(`There was no new messages.`);
+      }
+    });
+  })
+    .then(async data => {
+      for (const msg of data.messages) {
+        const currentMsg = await messageProvider.getMessageData(gmail, msg);
+        const author = await messageProvider.getMessageAuthor(gmail, msg);
+        let hasTokens = false;
+        if (hasToken(currentMsg, PROVIDER_TOKEN)) {
+          if (!config.providers.some(provs => provs.email === author.email)) {
+            config.providers.push(author);
+            writeDataSyncIntoConfig(gmail, currentMsg, config, "add provider");
+            hasTokens = true;
+          }
         }
-      })
-      .then(() => {
-        resolve();
-      });
-  }).then(() => {
-    const message = `Done searching for tokens`;
-    return message;
-  });
+        if (hasToken(currentMsg, SUBSCRIBER_TOKEN)) {
+          if (!config.subscribers.some(subs => subs.email === author.email)) {
+            config.subscribers.push(author);
+            writeDataSyncIntoConfig(gmail, currentMsg, config, "add subscriber");
+            hasTokens = true;
+          }
+        }
+        if (hasToken(currentMsg, UNSUBSCRIBE_TOKEN)) {
+          const id = config.subscribers.findIndex(sub => sub.email === author.email);
+          config.subscribers.splice(id, 1);
+          writeDataSyncIntoConfig(gmail, currentMsg, config, "delete subscriber");
+          hasTokens = true;
+        }
+        if (hasToken(currentMsg, NONPROVIDING_TOKEN)) {
+          const id = config.providers.findIndex(provider => provider.email === author.email);
+          config.providers.splice(id, 1);
+          writeDataSyncIntoConfig(gmail, currentMsg, config, "delete provider");
+          hasTokens = true;
+        }
+        if (!hasTokens) {
+          global.logger.info(`Couldn't find any tokens`);
+        }
+      }
+    })
+    .then(() => {
+      const message = `Done searching for tokens`;
+      return message;
+    });
 };
 
+function writeDataSyncIntoConfig(gmail, msg, data, overwritingInfo) {
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
+  } catch (err) {
+    global.logger.info(err);
+  } finally {
+    global.logger.info(`Overwriting existing config with ${overwritingInfo}`);
+    labelModifier.removeLabels(gmail, msg.data, ["UNREAD"]);
+  }
+}
 async function sendMessage(message, token) {
   const preparedMessage = message.headers.concat(message.body).join("\n");
   const headers = {
@@ -136,7 +148,7 @@ async function sendMessage(message, token) {
       return res.headers.location;
     })
     .then(location => {
-      global.logger.info("Starting uploading message data...");
+      global.logger.info(`Starting uploading message data ${message.headers[0]}`);
       axios
         .request(location, {
           method: "PUT",
@@ -155,7 +167,26 @@ async function sendMessage(message, token) {
         .catch(err => {
           global.logger.info("Couldn't message");
           global.logger.toStackTrace(err.response);
-          return err;
+          global.logger.info("Trying to send message again");
+          axios
+            .request(location, {
+              method: "PUT",
+              headers: {
+                "Content-Length": `${Buffer.byteLength(preparedMessage)}`,
+                "Content-Type": "message/rfc822"
+              },
+              data: preparedMessage,
+              maxBodyLength: Infinity,
+              maxContentLength: Infinity
+            })
+            .then(res => {
+              global.logger.info("Done uploading");
+              return res;
+            })
+            .catch(err => {
+              global.logger.info("Couldn't message stopped trying");
+              global.logger.toStackTrace(err.response);
+            });
         });
     })
     .catch(err => {
@@ -165,6 +196,23 @@ async function sendMessage(message, token) {
     });
 }
 
+function trashMessage(gmail, msg) {
+  const options = {
+    userId: "me",
+    id: msg.id
+  };
+  gmail.users.messages
+    .trash(options)
+    .then(() => {
+      global.logger.info(`Successfully trashed message ${msg.id}`);
+    })
+    .catch(err => {
+      global.logger.error(`Couldn't trashed message ${msg.id}`);
+      global.logger.toStackTrace(err);
+    });
+}
+
+module.exports.trashMessage = trashMessage;
 module.exports.sendMessage = sendMessage;
 module.exports.getMessageAuthor = getMessageAuthor;
 module.exports.getMessageData = getMessageData;

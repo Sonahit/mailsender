@@ -2,62 +2,74 @@ const fs = require("fs");
 const { google } = require("googleapis");
 const config = JSON.parse(fs.readFileSync("./config/config.json"));
 const { subscribers, host } = config;
+const hasToken = require("./authorize").hasToken;
 const labelModifier = require("./modify");
 const attchProvider = require("./attachments");
 const messageProvider = require("./message.js");
 
 module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(auth) {
+  const gmail = google.gmail({ version: "v1", auth });
   return new Promise(resolve => {
     global.logger.info("Searching for unread messages");
-    const gmail = google.gmail({ version: "v1", auth });
-    messageProvider
-      .getUnreadMessages(gmail)
-      .then(response => {
-        const { data } = response;
-        if (data.messages) {
-          data.messages.forEach(async msg => {
-            const currentMsg = await messageProvider.getMessageData(gmail, msg);
-            const isProvider = await messageProvider.isProvider(gmail, msg);
-            global.logger.info(`Is author a msg provider ? ${isProvider ? "Yes" : "No"}`);
-            if (currentMsg.data && isProvider) {
-              const { data } = currentMsg;
-              global.logger.info("Starting messaging subscribers...");
-              const accessToken = auth.credentials.access_token;
-              if (!process.env.DEBUG_LOGGER) {
-                const messageBody = await prepareMessageBody(gmail, data);
-                subscribers.forEach(async sub => {
-                  const messageHeaders = prepareMessageHeaders(data.payload.headers, sub, host);
-                  const message = {
-                    body: messageBody,
-                    headers: messageHeaders
-                  };
-                  messageProvider.sendMessage(message, accessToken);
-                });
-              } else {
-                global.logger.info("DEBUG");
-                const user = { firstName: "Иван", lastName: "Садыков", email: "grandpajok@gmail.com" };
-                const messageBody = await prepareMessageBody(gmail, data);
-                const messageHeaders = prepareMessageHeaders(data.payload.headers, user, host);
+    messageProvider.getUnreadMessages(gmail).then(response => {
+      const { data } = response;
+      if (data.messages) {
+        resolve(data);
+      } else {
+        global.logger.info("There was no new messages");
+      }
+    });
+  })
+    .then(async data => {
+      for (const msg of data.messages) {
+        const currentMsg = await messageProvider.getMessageData(gmail, msg);
+        const { PROVIDER_TOKEN, SUBSCRIBER_TOKEN, UNSUBSCRIBE_TOKEN, NONPROVIDING_TOKEN } = config;
+        if (
+          !(
+            hasToken(currentMsg, PROVIDER_TOKEN) ||
+            hasToken(currentMsg, SUBSCRIBER_TOKEN) ||
+            hasToken(currentMsg, UNSUBSCRIBE_TOKEN) ||
+            hasToken(currentMsg, NONPROVIDING_TOKEN)
+          )
+        ) {
+          const isProvider = await messageProvider.isProvider(gmail, msg);
+          global.logger.info(`Is author a msg provider ? ${isProvider ? "Yes" : "No"}`);
+          if (currentMsg.data && isProvider) {
+            const { data } = currentMsg;
+            global.logger.info("Starting messaging subscribers...");
+            const accessToken = auth.credentials.access_token;
+            const messageBody = await prepareMessageBody(gmail, data);
+            if (!process.env.DEBUG_LOGGER) {
+              subscribers.forEach(sub => {
+                const messageHeaders = prepareMessageHeaders(data.payload.headers, sub, host);
                 const message = {
                   body: messageBody,
                   headers: messageHeaders
                 };
                 messageProvider.sendMessage(message, accessToken);
-                labelModifier.removeLabels(gmail, data, ["UNREAD"]);
-              }
+              });
             } else {
-              labelModifier.removeLabels(gmail, currentMsg.data, ["UNREAD"]);
+              global.logger.info("DEBUG");
+              const user = { firstName: "Иван", lastName: "Садыков", email: "grandpajok@gmail.com" };
+              const messageHeaders = prepareMessageHeaders(data.payload.headers, user, host);
+              const message = {
+                body: messageBody,
+                headers: messageHeaders
+              };
+              messageProvider.sendMessage(message, accessToken);
             }
-          });
-        } else {
-          global.logger.info("There was no new messages");
+            labelModifier.removeLabels(gmail, data, ["UNREAD"]);
+          } else {
+            labelModifier.removeLabels(gmail, currentMsg.data, ["UNREAD"]);
+            messageProvider.trashMessage(gmail, msg);
+          }
         }
-      })
-      .then(() => resolve());
-  }).then(() => {
-    const message = "Done preparing";
-    return message;
-  });
+      }
+    })
+    .then(() => {
+      const message = "Done messaging";
+      return message;
+    });
 };
 
 function prepareMessageBody(gmail, data) {
