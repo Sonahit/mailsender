@@ -78,7 +78,7 @@ module.exports.checkForTokens = async function checkForTokens(auth) {
           const author = await messageProvider.getMessageAuthor(gmail, msg);
           if (!config.providers.some(provs => provs.email === author.email)) {
             config.providers.push(author);
-            fs.writeFile(configPath, JSON.stringify(config), err => {
+            fs.writeFile(configPath, JSON.stringify(config, null, 4), err => {
               global.logger.info(`Overwriting existing config.providers with author's message \n ${currentMsg.data.snippet}`);
               if (err) {
                 return global.logger.info(err);
@@ -90,7 +90,7 @@ module.exports.checkForTokens = async function checkForTokens(auth) {
           const author = await messageProvider.getMessageAuthor(gmail, msg);
           if (!config.subscribers.some(subs => subs.email === author.email)) {
             config.subscribers.push(author);
-            fs.writeFile(configPath, JSON.stringify(config), err => {
+            fs.writeFile(configPath, JSON.stringify(config, null, 4), err => {
               global.logger.info(`Overwriting existing config.subscribers with author's message \n ${currentMsg.data.snippet}`);
               if (err) {
                 return global.logger.info(err);

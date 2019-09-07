@@ -19,11 +19,11 @@ new Promise(resolve => {
 
 setInterval(() => {
   auth(credentials, mailing.mailMessagesToSubscribers);
-}, 1 * 1000 * 60);
+}, 10 * 1000 * 60);
 
 setInterval(() => {
   auth(credentials, message.checkForTokens);
-}, 30 * 1000);
+}, 5 * 1000 * 60);
 
 setInterval(() => {
   logger.info("Cleared stack trace");
