@@ -72,3 +72,7 @@ function getNewToken(oAuth2Client) {
 module.exports.hasToken = function hasToken(msg, token) {
   return msg.data.snippet.includes(token);
 };
+
+/* Portions of this page are modifications based on work created and
+ * shared by Google and used according to terms described in the Creative Commons 3.0 Attribution License.
+ */
