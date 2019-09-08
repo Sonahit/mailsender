@@ -6,6 +6,10 @@ const hasToken = require("./authorize").hasToken;
 const modifier = require("./modify");
 const messageProvider = require("./message.js");
 
+/**
+ * @param {google.auth.OAuth2} oAuth2Client The client which will message
+ * @returns {Promise} returns a Promise which will send a message or do not send it
+ */
 module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(auth) {
   const gmail = google.gmail({ version: "v1", auth });
   return new Promise((resolve, reject) => {
@@ -20,6 +24,7 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
     });
   })
     .then(async data => {
+      //Looking through every unread message
       for (const msg of data.messages) {
         const currentMsg = await messageProvider.getMessageData(gmail, msg);
         const { PROVIDER_TOKEN, SUBSCRIBER_TOKEN, UNSUBSCRIBE_TOKEN, NONPROVIDING_TOKEN } = config;

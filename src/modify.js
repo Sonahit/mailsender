@@ -20,6 +20,11 @@ module.exports.removeLabels = function removeLabels(gmail, msgData, labels = [])
     });
 };
 
+/**
+ * @param {Object} gmail Google gmail client
+ * @param {Object} data Message body to copy
+ * @returns {Promise} copied message body
+ */
 module.exports.prepareMessageBody = function prepareMessageBody(gmail, data) {
   return new Promise(resolve => {
     const messageBody = [];
@@ -91,6 +96,13 @@ module.exports.prepareMessageBody = function prepareMessageBody(gmail, data) {
     });
 };
 
+/**
+ * @param {Object} gmail Google gmail client
+ * @param {Object} origin headers
+ * @param {Object} user for "To: ${user.email}" header
+ * @param {Object} host for "From: ${host.email}" header
+ * @returns copied headers from origin headers but less and with appropriate To: From:
+ */
 module.exports.prepareMessageHeaders = function prepareMessageHeaders(origin, user, host) {
   const headers = [];
   origin[origin.findIndex(header => header.name === "To")] = {
@@ -121,6 +133,14 @@ module.exports.prepareMessageHeaders = function prepareMessageHeaders(origin, us
   return headers;
 };
 
+/**
+ *
+ * @param {Object} gmail Google gmail client
+ * @param {Array} messageBody preparing MIME message body
+ * @param {Object} attachments The message body that contains non-text attachments
+ * @param {Number} messageId Id of incoming message
+ * @returns {Array} copied MIME appropriate scheme for attachments
+ */
 async function getSchema(gmail, messageBody, attachments, messageId) {
   const mimes = attachments.headers;
   const boundary = attachments.headers

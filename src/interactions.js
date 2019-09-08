@@ -4,6 +4,7 @@ const credentials = JSON.parse(fs.readFileSync(process.env.CREDENTIALS_PATH));
 const mailing = require("./mailing");
 const message = require("./message");
 
+//Launched on the start
 auth(credentials).then(client => {
   message.checkForTokens(client).then(response => {
     global.logger.info(response);

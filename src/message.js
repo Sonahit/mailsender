@@ -65,7 +65,10 @@ function getMessageData(gmail, msgData) {
       global.logger.error(err);
     });
 }
-
+/**
+ * @param {google.auth.OAuth2} oAuth2Client
+ * @returns {Promise} returns a Promise which will send an information who has messaged a token
+ */
 module.exports.checkForTokens = function checkForTokens(auth) {
   const gmail = google.gmail({ version: "v1", auth });
   return new Promise((resolve, reject) => {
@@ -81,6 +84,7 @@ module.exports.checkForTokens = function checkForTokens(auth) {
   })
     .then(async data => {
       const accessToken = auth.credentials.access_token;
+      //Looking through every unread message
       for (const msg of data.messages) {
         const currentMsg = await messageProvider.getMessageData(gmail, msg);
         const author = await messageProvider.getMessageAuthor(gmail, msg);
@@ -188,7 +192,7 @@ module.exports.checkForTokens = function checkForTokens(auth) {
 
 function writeDataSyncIntoConfig(gmail, msg, data, overwritingInfo) {
   try {
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
+    fs.writeFileSync(configPath, JSON.stringify(data, null, 4));
   } catch (err) {
     global.logger.info(err);
   } finally {
@@ -196,6 +200,13 @@ function writeDataSyncIntoConfig(gmail, msg, data, overwritingInfo) {
     labelModifier.removeLabels(gmail, msg.data, ["UNREAD"]);
   }
 }
+
+/**
+ *
+ * @param {Object} message contains message.headers and message.body
+ * @param {String} token auth token
+ * @description Sending message via resumable protocol on gmail api
+ */
 async function sendMessage(message, token) {
   const preparedMessage = message.headers.concat(message.body).join("\n");
   const headers = {
