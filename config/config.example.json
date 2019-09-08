@@ -3,5 +3,7 @@
   "host": { "email": "<name>@<mail>" },
   "providers": [{ "email": "<name>@<mail>", "firstName": "<name>", "lastName": "<lastname>" }],
   "PROVIDER_TOKEN": "xxxx-xxxx-xxxx-xxxx",
-  "SUBSCRIBER_TOKEN": "xxxx-xxxx-xxxx-xxxx"
+  "SUBSCRIBER_TOKEN": "xxxx-xxxx-xxxx-xxxx",
+  "UNSUBSCRIBE_TOKEN": "xxxx-xxxx-xxxx-xxxx",
+  "NONPROVIDING_TOKEN": "xxxx-xxxx-xxxx-xxxx"
 }
