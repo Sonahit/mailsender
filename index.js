@@ -1,4 +1,7 @@
 const fs = require("fs");
+const Logger = require("./src/logger");
+const logger = new Logger("info");
+global.logger = logger;
 const interactions = require("./src/interactions");
 
 global.logger.info("Started mailing...");
