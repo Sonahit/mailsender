@@ -40,14 +40,16 @@ function getMessageAuthor(gmail, msg) {
   });
 }
 
-module.exports.isProvider = async function isProvider(gmail, msg) {
-  const author = await getMessageAuthor(gmail, msg);
-  return providers.some(provider => provider.email === author.email);
+module.exports.isProvider = function isProvider(gmail, msg) {
+  return getMessageAuthor(gmail, msg).then(author => {
+    return providers.some(provider => provider.email === author.email);
+  });
 };
 
-module.exports.isSubscriber = async function isSubscriber(gmail, msg) {
-  const author = await getMessageAuthor(gmail, msg);
-  return subscribers.some(subscriber => subscriber.email === author.email);
+module.exports.isSubscriber = function isSubscriber(gmail, msg) {
+  return getMessageAuthor(gmail, msg).then(author => {
+    return subscribers.some(subscriber => subscriber.email === author.email);
+  });
 };
 
 function getMessageData(gmail, msgData) {
@@ -66,14 +68,14 @@ function getMessageData(gmail, msgData) {
 
 module.exports.checkForTokens = function checkForTokens(auth) {
   const gmail = google.gmail({ version: "v1", auth });
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     global.logger.info("Searching for tokens");
     messageProvider.getUnreadMessages(gmail).then(response => {
       const { data } = response;
       if (data.messages) {
         resolve(data);
       } else {
-        global.logger.info(`There was no new messages.`);
+        reject(`There was no new messages\nDone searching`);
       }
     });
   })
@@ -114,8 +116,10 @@ module.exports.checkForTokens = function checkForTokens(auth) {
       }
     })
     .then(() => {
-      const message = `Done searching for tokens`;
-      return message;
+      return `Done searching for tokens`;
+    })
+    .catch(err => {
+      return err;
     });
 };
 
