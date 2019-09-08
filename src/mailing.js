@@ -60,7 +60,7 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
             modifier.removeLabels(gmail, data, ["UNREAD"]);
           } else {
             modifier.removeLabels(gmail, currentMsg.data, ["UNREAD"]);
-            messageProvider.trashMessage(gmail, msg);
+            messageProvider.trashMessage(gmail, currentMsg.data);
           }
         }
       }
