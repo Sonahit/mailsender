@@ -12,17 +12,13 @@ module.exports = class Logger {
         .split("\n")
         .forEach(msg => {
           console.log(`[${date[0]}] ${date[4]} ${date[5]}\t[INFO]: ${msg}`);
+          this.toStackTrace(`[${date[0]}] ${date[4]} ${date[5]}\t[INFO]: ${msg}`);
         });
     } else {
-      console.log(`[${date[0]}] ${date[4]} ${date[5]}\t[INFO]: ${message}`);
+      const infoMessage = `[${date[0]}] ${date[4]} ${date[5]}\t[INFO]: ${message}`;
+      console.log(infoMessage);
+      this.toStackTrace(infoMessage);
     }
-    const json = JSON.stringify({
-      Message: message,
-      level: this.level,
-      Date: date
-    });
-    this.toStackTrace(json);
-    return message;
   }
 
   error(...message) {
@@ -32,18 +28,14 @@ module.exports = class Logger {
         .toString()
         .split("\n")
         .forEach(msg => {
-          console.error(`[${date[0]}] ${date[4]} ${date[5]}\t[INFO]: ${msg}`);
+          console.error(`[${date[0]}] ${date[4]} ${date[5]}\t[ERROR]: ${msg}`);
+          this.toStackTrace(`[${date[0]}] ${date[4]} ${date[5]}\t[ERROR]: ${msg}`);
         });
     } else {
-      console.error(`[${date[0]}] ${date[4]} ${date[5]}\t[INFO]: ${message}`);
+      const errorMessage = `[${date[0]}] ${date[4]} ${date[5]}\t[ERROR]: ${message}`;
+      console.error(errorMessage);
+      this.toStackTrace(errorMessage);
     }
-    const json = JSON.stringify({
-      Message: message,
-      level: this.level,
-      Date: date
-    });
-    this.toStackTrace(json);
-    return message;
   }
 
   toStackTrace(stack) {
