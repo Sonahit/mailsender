@@ -1,7 +1,9 @@
 # Mail sender
 
-This mail sender is using free google gmail API to manipulate data of emails.
+This mail sender is using google [gmail API](https://developers.google.com/gmail/api/) to [manipulate](https://developers.google.com/gmail/api/v1/reference/) data of emails.
 
-You need get credentials for gmail API from dev.google.com and save them in the same folder as well as main npm file
+You need get credentials for gmail API from [devGoogle](https://developers.google.com/) and save them in the same folder as well as main npm main file.
 
-License: Free
+[Google Terms of Service](https://developers.google.com/terms/)
+
+License: [Creative Commons 3.0 Attribution License](https://developers.google.com/terms/site-policies)
