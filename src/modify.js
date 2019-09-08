@@ -24,6 +24,7 @@ module.exports.removeLabels = function removeLabels(gmail, msgData, labels = [])
  * @param {Object} gmail Google gmail client
  * @param {Object} data Message body to copy
  * @returns {Promise} copied message body
+ * @description Copies message body according to RFC822
  */
 module.exports.prepareMessageBody = function prepareMessageBody(gmail, data) {
   return new Promise(resolve => {
