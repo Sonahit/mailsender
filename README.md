@@ -6,4 +6,4 @@ You need get credentials for gmail API from [devGoogle](https://developers.googl
 
 [Google Terms of Service](https://developers.google.com/terms/)
 
-License: [Creative Commons 3.0 Attribution License](https://developers.google.com/terms/site-policies)
+License: MIT
