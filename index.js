@@ -9,12 +9,18 @@ interactions.backupData(5 * 60 * 1000);
 process.on("uncaughtException", error => {
   const date = new Date();
   global.logger.error(error);
-  fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay() + date.getMonth()}.log`, error);
-  fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay() + date.getMonth()}.log`, global.logger.stack);
+  fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay()}_${date.getMonth()}.log`, JSON.stringify(error, null, 4));
+  fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay()}_${date.getMonth()}.log`, JSON.stringify(global.logger.stack, null, 4));
 });
 
 process.on("beforeExit", code => {
   const date = new Date();
   global.logger.info(`Exited with ${code}`);
-  fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay() + date.getMonth()}.log`, global.logger.stack);
+  fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay()}_${date.getMonth()}.log`, JSON.stringify(global.logger.stack, null, 4));
+});
+
+process.on("exit", code => {
+  const date = new Date();
+  global.logger.info(`Exited with ${code}`);
+  fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay()}_${date.getMonth()}.log`, JSON.stringify(global.logger.stack, null, 4));
 });

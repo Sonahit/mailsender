@@ -4,7 +4,8 @@ module.exports = class Logger {
   }
 
   info(...message) {
-    console.log(`info: ${message}`);
+    const date = new Date();
+    console.log(`[${date.getUTCDay()}] ${date.getUTCHours()}:${date.getUTCMinutes()}\t[INFO]: ${message}`);
     const json = JSON.stringify({
       Message: message,
       level: "info",
@@ -15,7 +16,8 @@ module.exports = class Logger {
   }
 
   error(...message) {
-    console.error(`info: ${message}`);
+    const date = new Date();
+    console.error(`[${date.getUTCDay()}] ${date.getUTCHours()}:${date.getUTCMinutes()}\t[ERROR]: ${message}`);
     const json = JSON.stringify({
       Message: message,
       Date: Date.now()
