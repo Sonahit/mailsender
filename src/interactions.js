@@ -29,17 +29,17 @@ module.exports.messageSubs = function messageSubs(interval) {
 
 module.exports.clearStackTrace = function clearStackTrace(interval) {
   setInterval(() => {
-    global.logger.info("Cleared stack trace");
     const date = new Date();
-    fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay + date.getMonth()}.log`, global.logger.stack);
+    fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay()}_${date.getMonth()}.log`, JSON.stringify(global.logger.stack, null, 4));
     global.logger.stack = [];
+    global.logger.info("Cleared stack trace");
   }, interval);
 };
 module.exports.backupData = function backupData(interval) {
   setInterval(() => {
     global.logger.info("Backing up data");
     fs.writeFile("./backups/config.backup.json", fs.readFileSync("./config/config.json"), err => {
-      if (err) global.logger.info(err);
+      if (err) global.logger.error(err);
     });
   }, interval);
 };
