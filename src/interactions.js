@@ -30,7 +30,8 @@ module.exports.messageSubs = function messageSubs(interval) {
 module.exports.clearStackTrace = function clearStackTrace(interval) {
   setInterval(() => {
     const date = new Date();
-    fs.writeFileSync(__dirname + `/logs/log_${Date.now()}_${date.getDay()}_${date.getMonth()}.log`, JSON.stringify(global.logger.stack, null, 4));
+    const path = process.env.ROOT_PATH + `/logs`;
+    fs.writeFileSync(`${path}/log_${Date.now()}_${date.getDay()}_${date.getMonth()}.log`, JSON.stringify(global.logger.stack, null, 4));
     global.logger.stack = [];
     global.logger.info("Cleared stack trace");
   }, interval);
