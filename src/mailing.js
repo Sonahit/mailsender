@@ -43,25 +43,15 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
             global.logger.info("Starting messaging subscribers...");
             const accessToken = auth.credentials.access_token;
             const messageBody = await modifier.prepareMessageBody(gmail, data);
-            if (!process.env.DEBUG_LOGGER) {
-              subscribers.forEach(sub => {
-                const messageHeaders = modifier.prepareMessageHeaders(data.payload.headers, sub, host);
-                const message = {
-                  body: messageBody,
-                  headers: messageHeaders
-                };
-                messageProvider.sendMessage(message, accessToken);
-              });
-            } else {
-              global.logger.info("DEBUG");
-              const user = { firstName: "Иван", lastName: "Садыков", email: "grandpajok@gmail.com" };
-              const messageHeaders = modifier.prepareMessageHeaders(data.payload.headers, user, host);
+            //const user = { firstName: "Иван", lastName: "Садыков", email: "grandpajok@gmail.com" }; for debugging
+            subscribers.forEach(sub => {
+              const messageHeaders = modifier.prepareMessageHeaders(data.payload.headers, sub, host);
               const message = {
                 body: messageBody,
                 headers: messageHeaders
               };
               messageProvider.sendMessage(message, accessToken);
-            }
+            });
             modifier.removeLabels(gmail, data, ["UNREAD"]);
           } else {
             modifier.removeLabels(gmail, currentMsg.data, ["UNREAD"]);
