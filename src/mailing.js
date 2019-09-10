@@ -1,7 +1,5 @@
 const fs = require("fs");
 const { google } = require("googleapis");
-const config = JSON.parse(fs.readFileSync("./config/config.json"));
-const { subscribers, host } = config;
 const hasToken = require("./authorize").hasToken;
 const modifier = require("./modify");
 const messageProvider = require("./message.js");
@@ -24,10 +22,12 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
     });
   })
     .then(async data => {
+      const config = JSON.parse(fs.readFileSync("./config/config.json"));
+      const { subscribers, host } = config;
+      const { PROVIDER_TOKEN, SUBSCRIBER_TOKEN, UNSUBSCRIBE_TOKEN, NONPROVIDING_TOKEN } = config;
       //Looking through every unread message
       for (const msg of data.messages) {
         const currentMsg = await messageProvider.getMessageData(gmail, msg);
-        const { PROVIDER_TOKEN, SUBSCRIBER_TOKEN, UNSUBSCRIBE_TOKEN, NONPROVIDING_TOKEN } = config;
         if (
           !(
             hasToken(currentMsg, PROVIDER_TOKEN) ||

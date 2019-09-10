@@ -1,8 +1,6 @@
 const fs = require("fs");
 const { google } = require("googleapis");
 const path = require("path");
-const config = JSON.parse(fs.readFileSync("./config/config.json"));
-const { providers, subscribers, PROVIDER_TOKEN, SUBSCRIBER_TOKEN, UNSUBSCRIBE_TOKEN, NONPROVIDING_TOKEN, host } = config;
 const configPath = path.resolve("config/config.json");
 const hasToken = require("./authorize").hasToken;
 const labelModifier = require("./modify");
@@ -28,25 +26,25 @@ function getMessageAuthor(gmail, msg) {
     const author = rawData.value.split(" ");
     const email = author
       .find(userData => {
-        return userData.match(/^<(.+)@.+>$/gi);
+        return userData.match(/^(<|.)(.+)@.+(>|.)$/gi);
       })
       .replace(/<|>/g, "");
 
     return {
       email: email,
-      firstName: author[0] || "",
-      lastName: author[1].includes(email) ? "" : author[1]
+      firstName: author[0] && author[0].includes(email) ? "" : author[1],
+      lastName: author[1] && author[1].includes(email) ? "" : author[1]
     };
   });
 }
 
-module.exports.isProvider = function isProvider(gmail, msg) {
+module.exports.isProvider = function isProvider(gmail, msg, providers) {
   return getMessageAuthor(gmail, msg).then(author => {
     return providers.some(provider => provider.email === author.email);
   });
 };
 
-module.exports.isSubscriber = function isSubscriber(gmail, msg) {
+module.exports.isSubscriber = function isSubscriber(gmail, msg, subscribers) {
   return getMessageAuthor(gmail, msg).then(author => {
     return subscribers.some(subscriber => subscriber.email === author.email);
   });
@@ -83,6 +81,8 @@ module.exports.checkForTokens = function checkForTokens(auth) {
     });
   })
     .then(async data => {
+      const config = JSON.parse(fs.readFileSync("./config/config.json"));
+      const { PROVIDER_TOKEN, SUBSCRIBER_TOKEN, UNSUBSCRIBE_TOKEN, NONPROVIDING_TOKEN, host } = config;
       const accessToken = auth.credentials.access_token;
       //Looking through every unread message
       for (const msg of data.messages) {
@@ -178,7 +178,7 @@ module.exports.checkForTokens = function checkForTokens(auth) {
         if (!hasTokens) {
           global.logger.info(`Couldn't find any tokens`);
         } else {
-          labelModifier.removeLabels(gmail, currentMsg, ["UNREAD"]);
+          labelModifier.removeLabels(gmail, currentMsg.data, ["UNREAD"]);
         }
       }
     })
