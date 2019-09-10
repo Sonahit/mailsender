@@ -23,6 +23,7 @@ process.on("uncaughtException", error => {
   const path = process.env.ROOT_PATH + `/logs`;
   fs.writeFileSync(`${path}/log_${Date.now()}_${date.getDay()}_${date.getMonth()}_error.log`, JSON.stringify(error, null, 4));
   fs.writeFileSync(`${path}/log_${Date.now()}_${date.getDay()}_${date.getMonth()}.log`, JSON.stringify(global.logger.stack, null, 4));
+  process.exit(1);
 });
 
 process.on("beforeExit", code => {
