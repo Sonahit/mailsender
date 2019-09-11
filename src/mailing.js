@@ -24,7 +24,7 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
     .then(async data => {
       const config = JSON.parse(fs.readFileSync("./config/config.json"));
       const { subscribers, host } = config;
-      const { PROVIDER_TOKEN, SUBSCRIBER_TOKEN, UNSUBSCRIBE_TOKEN, NONPROVIDING_TOKEN } = config;
+      const { PROVIDER_TOKEN, SUBSCRIBER_TOKEN, UNSUBSCRIBE_TOKEN, NONPROVIDING_TOKEN, providers } = config;
       //Looking through every unread message
       for (const msg of data.messages) {
         const currentMsg = await messageProvider.getMessageData(gmail, msg);
@@ -36,7 +36,7 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
             hasToken(currentMsg, NONPROVIDING_TOKEN)
           )
         ) {
-          const isProvider = await messageProvider.isProvider(gmail, msg);
+          const isProvider = await messageProvider.isProvider(gmail, msg, providers);
           global.logger.info(`Is author a msg provider ? ${isProvider ? "Yes" : "No"}`);
           if (currentMsg.data && isProvider) {
             const { data } = currentMsg;
@@ -62,8 +62,5 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
     })
     .then(() => {
       return "Done messaging";
-    })
-    .catch(err => {
-      return err;
     });
 };
