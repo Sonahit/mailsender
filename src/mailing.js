@@ -62,5 +62,8 @@ module.exports.mailMessagesToSubscribers = function mailMessagesToSubscribers(au
     })
     .then(() => {
       return "Done messaging";
+    })
+    .catch(err => {
+      return err;
     });
 };
