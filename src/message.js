@@ -186,6 +186,7 @@ module.exports.checkForTokens = function checkForTokens(auth) {
       return `Done searching for tokens`;
     })
     .catch(err => {
+      global.logger.error(err);
       return err;
     });
 };
@@ -194,7 +195,7 @@ function writeDataSyncIntoConfig(gmail, msg, data, overwritingInfo) {
   try {
     fs.writeFileSync(configPath, JSON.stringify(data, null, 4));
   } catch (err) {
-    global.logger.info(err);
+    global.logger.error(err);
   } finally {
     global.logger.info(`Overwriting existing config with ${overwritingInfo}`);
     labelModifier.removeLabels(gmail, msg.data, ["UNREAD"]);
@@ -263,15 +264,15 @@ async function sendMessage(message, token) {
                 return res;
               })
               .catch(err => {
-                global.logger.info("Couldn't message stopped trying");
                 global.logger.toStackTrace(err.response);
+                global.logger.err("Couldn't message stopped trying");
               });
           }, 2000);
         });
     })
     .catch(err => {
-      global.logger.info("Couldn't start messaging");
       global.logger.toStackTrace(err.response);
+      global.logger.err("Couldn't start messaging");
       return err;
     });
 }
