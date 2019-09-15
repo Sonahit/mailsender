@@ -246,25 +246,27 @@ async function sendMessage(message, token) {
           global.logger.info("Couldn't message");
           global.logger.toStackTrace(err.response);
           global.logger.info("Trying to send message again");
-          axios
-            .request(location, {
-              method: "PUT",
-              headers: {
-                "Content-Length": `${Buffer.byteLength(preparedMessage)}`,
-                "Content-Type": "message/rfc822"
-              },
-              data: preparedMessage,
-              maxBodyLength: Infinity,
-              maxContentLength: Infinity
-            })
-            .then(res => {
-              global.logger.info("Done uploading");
-              return res;
-            })
-            .catch(err => {
-              global.logger.info("Couldn't message stopped trying");
-              global.logger.toStackTrace(err.response);
-            });
+          setTimeout(() => {
+            axios
+              .request(location, {
+                method: "PUT",
+                headers: {
+                  "Content-Length": `${Buffer.byteLength(preparedMessage)}`,
+                  "Content-Type": "message/rfc822"
+                },
+                data: preparedMessage,
+                maxBodyLength: Infinity,
+                maxContentLength: Infinity
+              })
+              .then(res => {
+                global.logger.info("Done uploading");
+                return res;
+              })
+              .catch(err => {
+                global.logger.info("Couldn't message stopped trying");
+                global.logger.toStackTrace(err.response);
+              });
+          }, 2000);
         });
     })
     .catch(err => {

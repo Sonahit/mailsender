@@ -36,6 +36,9 @@ module.exports = class Logger {
       console.error(errorMessage);
       this.toStackTrace(errorMessage);
     }
+    const fs = require("fs");
+    const path = process.env.ROOT_PATH + `/logs`;
+    fs.writeFileSync(`${path}/log_${Date.now()}_${date.getDay()}_${date.getMonth()}.log`, JSON.stringify(global.logger.stack, null, 4));
   }
 
   toStackTrace(stack) {

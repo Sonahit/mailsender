@@ -14,7 +14,7 @@ const minutes = mins => mins * 1000 * 60;
 // Setting up main flow
 global.logger.info("Started mailing...");
 interactions.messageSubs(minutes(5));
-interactions.clearStackTrace(minutes(30));
+interactions.clearStackTrace(minutes(20));
 interactions.backupData(minutes(10));
 
 process.on("uncaughtException", error => {
