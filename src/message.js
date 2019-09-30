@@ -216,65 +216,70 @@ async function sendMessage(message, token) {
     "X-Upload-Content-Type": "message/rfc822"
   };
   const axios = require("axios");
-  axios
-    .request("https://googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=resumable", {
-      method: "POST",
-      headers: {
-        ...headers
-      }
-    })
-    .then(res => {
-      return res.headers.location;
-    })
-    .then(location => {
-      global.logger.info(`Starting uploading message data ${message.headers[0]}`);
-      axios
-        .request(location, {
-          method: "PUT",
-          headers: {
-            "Content-Length": `${Buffer.byteLength(preparedMessage)}`,
-            "Content-Type": "message/rfc822"
-          },
-          data: preparedMessage,
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity
-        })
-        .then(res => {
-          global.logger.info("Done uploading");
-          return res;
-        })
-        .catch(err => {
-          global.logger.info("Couldn't message");
-          global.logger.toStackTrace(err.response);
-          global.logger.info("Trying to send message again");
-          setTimeout(() => {
-            axios
-              .request(location, {
-                method: "PUT",
-                headers: {
-                  "Content-Length": `${Buffer.byteLength(preparedMessage)}`,
-                  "Content-Type": "message/rfc822"
-                },
-                data: preparedMessage,
-                maxBodyLength: Infinity,
-                maxContentLength: Infinity
-              })
-              .then(res => {
-                global.logger.info("Done uploading");
-                return res;
-              })
-              .catch(err => {
-                global.logger.toStackTrace(err.response);
-                global.logger.err("Couldn't message stopped trying");
-              });
-          }, 2000);
-        });
-    })
-    .catch(err => {
-      global.logger.toStackTrace(err.response);
-      global.logger.err("Couldn't start messaging");
-      return err;
-    });
+  setTimeout(() => {
+    global.logger.info(`Starting http requests`);
+    axios
+      .request("https://googleapis.com/upload/gmail/v1/users/me/messages/send?uploadType=resumable", {
+        method: "POST",
+        headers: {
+          ...headers
+        }
+      })
+      .then(res => {
+        return res.headers.location;
+      })
+      .then(location => {
+        global.logger.info(`Starting uploading message data ${message.headers[0]}`);
+        setTimeout(() => {
+          axios
+            .request(location, {
+              method: "PUT",
+              headers: {
+                "Content-Length": `${Buffer.byteLength(preparedMessage)}`,
+                "Content-Type": "message/rfc822"
+              },
+              data: preparedMessage,
+              maxBodyLength: Infinity,
+              maxContentLength: Infinity
+            })
+            .then(res => {
+              global.logger.info("Done uploading");
+              return res;
+            })
+            .catch(err => {
+              global.logger.info("Couldn't message");
+              global.logger.toStackTrace(err.response);
+              global.logger.info("Trying to send message again");
+              setTimeout(() => {
+                axios
+                  .request(location, {
+                    method: "PUT",
+                    headers: {
+                      "Content-Length": `${Buffer.byteLength(preparedMessage)}`,
+                      "Content-Type": "message/rfc822"
+                    },
+                    data: preparedMessage,
+                    maxBodyLength: Infinity,
+                    maxContentLength: Infinity
+                  })
+                  .then(res => {
+                    global.logger.info("Done uploading");
+                    return res;
+                  })
+                  .catch(err => {
+                    global.logger.toStackTrace(err.response);
+                    global.logger.err("Couldn't message stopped trying");
+                  });
+              }, 2000);
+            });
+        }, 2 * 1000);
+      })
+      .catch(err => {
+        global.logger.toStackTrace(err.response);
+        global.logger.err("Couldn't start messaging");
+        return err;
+      });
+  }, 2 * 1000);
 }
 
 function trashMessage(gmail, msg) {
