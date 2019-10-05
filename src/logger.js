@@ -22,7 +22,7 @@ module.exports = class Logger {
   }
 
   error(...message) {
-    const date = new Date().toString().split(" ");
+    let date = new Date().toString().split(" ");
     if (message.toString().indexOf("\n") !== -1) {
       message
         .toString()
@@ -38,6 +38,7 @@ module.exports = class Logger {
     }
     const fs = require("fs");
     const path = process.env.ROOT_PATH + `/logs`;
+    date = new Date();
     fs.writeFileSync(`${path}/log_${Date.now()}_${date.getDay()}_${date.getMonth()}.log`, JSON.stringify(global.logger.stack, null, 4));
   }
 
